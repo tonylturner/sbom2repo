@@ -1,1 +1,1 @@
-purl2repo>=2.0.1
+purl2repo>=2.0.2

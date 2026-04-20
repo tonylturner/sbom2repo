@@ -23,14 +23,18 @@ virtual environment in editable mode:
 .venv/bin/python -m pip install -e ../purl2repo
 ```
 
-Confirm the installed resolver supports the bulk settings used by `--fast`:
+Confirm the installed resolver supports the bulk settings used by `--fast` and
+the first-class repository validation fields added in `purl2repo` 2.0.2:
 
 ```bash
 .venv/bin/python -c "import inspect; from purl2repo import Resolver; print(inspect.signature(Resolver))"
 ```
 
 The output should include `validate_repositories`,
-`use_deps_dev_fallback`, and `use_scraper_fallback`.
+`use_deps_dev_fallback`, and `use_scraper_fallback`. The JSON model should
+include `repository_validated` when resolving with `purl2repo` 2.0.2 or newer;
+older local installs still work through a compatibility fallback that inspects
+evidence strings.
 
 ## Usage
 
@@ -104,7 +108,8 @@ timeout is `3.0` seconds instead of `10.0`. For finer control, use
 
 The bulk resolver switches require a `purl2repo` version that supports them. If
 you see an error saying the installed `purl2repo` does not support the requested
-bulk resolver settings, install the local updated checkout with:
+bulk resolver settings, upgrade to `purl2repo>=2.0.2` or install the local
+updated checkout with:
 
 ```bash
 .venv/bin/python -m pip install -e ../purl2repo
@@ -122,6 +127,7 @@ For each SBOM component with a `purl`, the tool reports:
 - release URL, when available
 - confidence
 - whether the repository URL validated
+- repository validation status from `purl2repo`
 - whether fallback metadata or scraping was used
 - metadata sources used by `purl2repo`
 - warnings or per-component errors
@@ -138,6 +144,7 @@ Version: 2.31.0
 Release URL: not found
 Confidence: high
 Validated: yes
+Validation status: validated
 Fallback: no
 Metadata sources: pypi-json
 ```

@@ -50,6 +50,8 @@ class FakeResolver:
             canonical_repository=None,
             release_link=release,
             version_reference=release,
+            repository_validated=True,
+            repository_validation_status="validated",
             confidence="high",
             evidence=[
                 "resolved",
@@ -89,6 +91,7 @@ def test_resolve_sbom_maps_purl2repo_result():
     )
     assert results[0].confidence == "high"
     assert results[0].validated_repository is True
+    assert results[0].repository_validation_status == "validated"
     assert results[0].used_fallback is False
     assert results[0].metadata_sources == ["github-direct"]
 
@@ -101,6 +104,7 @@ def test_resolve_sbom_records_errors_per_component():
     assert results[0].component_name == "Broken"
     assert results[0].repository_url is None
     assert results[0].confidence == "none"
+    assert results[0].repository_validation_status == "not_applicable"
     assert results[0].error == "InvalidPurlError: invalid"
 
 
@@ -185,3 +189,4 @@ def test_results_to_json():
     payload = json.loads(results_to_json(results, pretty=True))
 
     assert payload[0]["repository_url"] == "https://github.com/package-url/purl-spec"
+    assert payload[0]["repository_validation_status"] == "validated"

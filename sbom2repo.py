@@ -33,6 +33,7 @@ class SbomRepositoryResult:
     release_kind: str | None
     confidence: str
     validated_repository: bool
+    repository_validation_status: str
     used_fallback: bool
     metadata_sources: list[str]
     evidence: list[str]
@@ -107,6 +108,7 @@ def resolve_sbom(
                     release_kind=None,
                     confidence="none",
                     validated_repository=False,
+                    repository_validation_status="not_applicable",
                     used_fallback=False,
                     metadata_sources=[],
                     evidence=[],
@@ -139,6 +141,7 @@ def print_human(results: list[SbomRepositoryResult]) -> None:
             print(f"Release URL: {result.release_url or 'not found'}")
             print(f"Confidence: {result.confidence}")
             print(f"Validated: {'yes' if result.validated_repository else 'no'}")
+            print(f"Validation status: {result.repository_validation_status}")
             print(f"Fallback: {'yes' if result.used_fallback else 'no'}")
             if result.metadata_sources:
                 print(f"Metadata sources: {', '.join(result.metadata_sources)}")
@@ -376,9 +379,19 @@ def _result_from_resolution(
 ) -> SbomRepositoryResult:
     release = resolution.release_link
     validated_repository = bool(
-        resolution.repository_url
-        and f"Validated repository URL: {resolution.repository_url}"
-        in resolution.evidence
+        getattr(resolution, "repository_validated", False)
+        or (
+            resolution.repository_url
+            and f"Validated repository URL: {resolution.repository_url}"
+            in resolution.evidence
+        )
+    )
+    repository_validation_status = str(
+        getattr(
+            resolution,
+            "repository_validation_status",
+            "validated" if validated_repository else "unknown",
+        )
     )
     fallback_text = " ".join(
         [*resolution.evidence, *resolution.warnings, *resolution.metadata_sources]
@@ -396,6 +409,7 @@ def _result_from_resolution(
         release_kind=release.kind if release else None,
         confidence=resolution.confidence,
         validated_repository=validated_repository,
+        repository_validation_status=repository_validation_status,
         used_fallback=used_fallback,
         metadata_sources=resolution.metadata_sources,
         evidence=resolution.evidence,
