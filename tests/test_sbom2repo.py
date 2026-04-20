@@ -1,11 +1,13 @@
 from __future__ import annotations
 
 import json
+from argparse import Namespace
 
 from purl2repo.errors import InvalidPurlError
 from purl2repo.models import ParsedPurl, ReleaseLink, ResolutionResult
 
 from sbom2repo import (
+    _add_supported_resolver_kwargs,
     build_parser,
     filter_results,
     load_cyclonedx_sbom,
@@ -145,6 +147,29 @@ def test_parser_exposes_purl2repo_bulk_settings():
     assert args.validate_repositories is False
     assert args.deps_dev_fallback is False
     assert args.scraper_fallback is False
+
+
+def test_optional_resolver_settings_are_compatible_with_old_purl2repo_defaults():
+    resolver_kwargs = {"timeout": 10.0}
+    optional_kwargs = {
+        "validate_repositories": True,
+        "use_deps_dev_fallback": True,
+        "use_scraper_fallback": True,
+    }
+
+    _add_supported_resolver_kwargs(
+        build_parser(),
+        resolver_kwargs,
+        optional_kwargs,
+        args=Namespace(
+            fast=False,
+            validate_repositories=True,
+            deps_dev_fallback=True,
+            scraper_fallback=True,
+        ),
+    )
+
+    assert resolver_kwargs["timeout"] == 10.0
 
 
 def test_results_to_json():

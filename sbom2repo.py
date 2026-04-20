@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import inspect
 import json
 import logging
 import time
@@ -284,14 +285,25 @@ def main() -> int:
     sbom_data = load_cyclonedx_sbom(args.sbom_file_path)
     timeout = args.timeout if args.timeout is not None else (3.0 if args.fast else 10.0)
     started = time.monotonic()
+    resolver_kwargs: dict[str, object] = {
+        "timeout": timeout,
+        "strict": args.strict,
+        "no_network": args.no_network,
+        "verify_release_links": args.verify_release_links,
+    }
+    optional_resolver_kwargs = {
+        "validate_repositories": validate_repositories,
+        "use_deps_dev_fallback": use_deps_dev_fallback,
+        "use_scraper_fallback": use_scraper_fallback,
+    }
+    _add_supported_resolver_kwargs(
+        parser,
+        resolver_kwargs,
+        optional_resolver_kwargs,
+        args=args,
+    )
     with Resolver(
-        timeout=timeout,
-        strict=args.strict,
-        no_network=args.no_network,
-        verify_release_links=args.verify_release_links,
-        validate_repositories=validate_repositories,
-        use_deps_dev_fallback=use_deps_dev_fallback,
-        use_scraper_fallback=use_scraper_fallback,
+        **resolver_kwargs,
     ) as resolver:
         results = resolve_sbom(
             sbom_data, resolver, repo_only=args.repo_only or args.fast
@@ -310,6 +322,32 @@ def main() -> int:
         if not args.no_summary:
             print_summary(results, elapsed_seconds=elapsed_seconds)
     return 0
+
+
+def _add_supported_resolver_kwargs(
+    parser: argparse.ArgumentParser,
+    resolver_kwargs: dict[str, object],
+    optional_resolver_kwargs: dict[str, object],
+    *,
+    args: argparse.Namespace,
+) -> None:
+    resolver_parameters = set(inspect.signature(Resolver).parameters)
+    unsupported = set(optional_resolver_kwargs) - resolver_parameters
+    requested_new_settings = (
+        args.fast
+        or not args.validate_repositories
+        or not args.deps_dev_fallback
+        or not args.scraper_fallback
+    )
+    if unsupported and requested_new_settings:
+        parser.error(
+            "The installed purl2repo does not support the requested bulk resolver "
+            "settings. Install the local updated purl2repo package or upgrade to "
+            "the next purl2repo release."
+        )
+    for key, value in optional_resolver_kwargs.items():
+        if key in resolver_parameters:
+            resolver_kwargs[key] = value
 
 
 def filter_results(
