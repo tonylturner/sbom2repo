@@ -1,24 +1,76 @@
 # sbom2repo
 
-sbom2repo is a tool designed to map package URLs (purls) from a Software Bill of Materials (SBOM) to their corresponding source repositories and release information. This can be useful for tracing dependencies, identifying vulnerabilities, and verifying software authenticity in the supply chain.
+`sbom2repo` reads Package URLs (PURLs) from a CycloneDX JSON SBOM and resolves
+them to repositories with `purl2repo`.
 
-It implements the purl2repo library and is intended to be a minimal implementation designed for testing the library but can be used to process entire SBOM files and produce a list of vcs repo URIs. 
+It is intentionally small: SBOM parsing stays limited to CycloneDX `components`,
+and repository resolution is delegated to `purl2repo` 2.x.
 
-## Features
-- Parses SBOMs containing purls (e.g., pkg:pypi/requests@2.25.1).
-- Retrieves source repository and release information.
-- Supports multiple ecosystems like PyPI, Maven, and more.
-- Supports JSON formatted SBOM only
+## Install
+
+```bash
+python3 -m venv .venv
+.venv/bin/python -m pip install --upgrade pip
+.venv/bin/python -m pip install -r requirements.txt
+```
 
 ## Usage
 
+Human-readable output:
+
 ```bash
-    python3 sbom2repo.py <sbom path>
+.venv/bin/python sbom2repo.py path/to/sbom.json
 ```
 
-Example results:
+JSON output:
 
-Package: django  
-Repository: https://github.com/django/django  
-Version: 1.4  
-Release URL: https://github.com/django/django/releases/tag/1.4  
+```bash
+.venv/bin/python sbom2repo.py path/to/sbom.json --json --pretty
+```
+
+Offline/direct-host resolution:
+
+```bash
+.venv/bin/python sbom2repo.py path/to/sbom.json --no-network
+```
+
+Verify inferred release links:
+
+```bash
+.venv/bin/python sbom2repo.py path/to/sbom.json --verify-release-links
+```
+
+## Output
+
+For each SBOM component with a `purl`, the tool reports:
+
+- component name
+- PURL
+- package name and version
+- repository URL
+- repository kind and type
+- release URL, when available
+- confidence
+- warnings or per-component errors
+
+Example:
+
+```text
+Package: requests
+PURL: pkg:pypi/requests@2.31.0
+Repository: https://github.com/psf/requests
+Kind: source_code
+Type: github
+Version: 2.31.0
+Release URL: not found
+Confidence: high
+```
+
+## Development
+
+```bash
+python3 -m venv .venv
+.venv/bin/python -m pip install -r requirements.txt
+.venv/bin/python -m pip install pytest
+.venv/bin/python -m pytest
+```
