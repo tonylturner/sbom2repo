@@ -5,11 +5,17 @@ import json
 from purl2repo.errors import InvalidPurlError
 from purl2repo.models import ParsedPurl, ReleaseLink, ResolutionResult
 
-from sbom2repo import load_cyclonedx_sbom, resolve_sbom, results_to_json
+from sbom2repo import filter_results, load_cyclonedx_sbom, resolve_sbom, results_to_json
 
 
 class FakeResolver:
     def resolve(self, purl: str) -> ResolutionResult:
+        return self._resolve(purl)
+
+    def resolve_repository(self, purl: str) -> ResolutionResult:
+        return self._resolve(purl)
+
+    def _resolve(self, purl: str) -> ResolutionResult:
         if purl == "bad":
             raise InvalidPurlError("invalid")
         parsed = ParsedPurl(
@@ -37,7 +43,10 @@ class FakeResolver:
             release_link=release,
             version_reference=release,
             confidence="high",
-            evidence=["resolved"],
+            evidence=[
+                "resolved",
+                "Validated repository URL: https://github.com/package-url/purl-spec",
+            ],
             warnings=[],
             metadata_sources=["github-direct"],
         )
@@ -71,6 +80,9 @@ def test_resolve_sbom_maps_purl2repo_result():
         == "https://github.com/package-url/purl-spec/releases/tag/1.0.0"
     )
     assert results[0].confidence == "high"
+    assert results[0].validated_repository is True
+    assert results[0].used_fallback is False
+    assert results[0].metadata_sources == ["github-direct"]
 
 
 def test_resolve_sbom_records_errors_per_component():
@@ -82,6 +94,36 @@ def test_resolve_sbom_records_errors_per_component():
     assert results[0].repository_url is None
     assert results[0].confidence == "none"
     assert results[0].error == "InvalidPurlError: invalid"
+
+
+def test_resolve_sbom_can_run_repository_only():
+    results = resolve_sbom(
+        {
+            "components": [
+                {"name": "PURL Spec", "purl": "pkg:github/package-url/purl-spec@1.0.0"}
+            ]
+        },
+        FakeResolver(),
+        repo_only=True,
+    )
+
+    assert results[0].repository_url == "https://github.com/package-url/purl-spec"
+
+
+def test_filter_results_keeps_errors_and_applies_quality_filters():
+    results = resolve_sbom(
+        {
+            "components": [
+                {"name": "PURL Spec", "purl": "pkg:github/package-url/purl-spec@1.0.0"},
+                {"name": "Broken", "purl": "bad"},
+            ]
+        },
+        FakeResolver(),
+    )
+
+    filtered = filter_results(results, min_confidence="high", require_validated=True)
+
+    assert [result.component_name for result in filtered] == ["PURL Spec", "Broken"]
 
 
 def test_results_to_json():

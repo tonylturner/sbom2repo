@@ -22,6 +22,21 @@ Human-readable output:
 .venv/bin/python sbom2repo.py path/to/sbom.json
 ```
 
+Fast repository-only inventory:
+
+```bash
+.venv/bin/python sbom2repo.py path/to/sbom.json --repo-only
+```
+
+Conservative automation output:
+
+```bash
+.venv/bin/python sbom2repo.py path/to/sbom.json \
+  --repo-only \
+  --min-confidence medium \
+  --require-validated
+```
+
 JSON output:
 
 ```bash
@@ -40,6 +55,11 @@ Verify inferred release links:
 .venv/bin/python sbom2repo.py path/to/sbom.json --verify-release-links
 ```
 
+Large Maven SBOMs can be slow because every component may require Maven POM
+fetches, parent POM fetches, repository URL validation, and fallback metadata
+checks for stale SCM URLs. Use `--repo-only` when release/tag URLs are not
+needed, and lower `--timeout` for quicker best-effort inventory runs.
+
 ## Output
 
 For each SBOM component with a `purl`, the tool reports:
@@ -51,6 +71,9 @@ For each SBOM component with a `purl`, the tool reports:
 - repository kind and type
 - release URL, when available
 - confidence
+- whether the repository URL validated
+- whether fallback metadata or scraping was used
+- metadata sources used by `purl2repo`
 - warnings or per-component errors
 
 Example:
@@ -64,6 +87,27 @@ Type: github
 Version: 2.31.0
 Release URL: not found
 Confidence: high
+Validated: yes
+Fallback: no
+Metadata sources: pypi-json
+```
+
+At the end of human-readable output, `sbom2repo` prints a summary with totals,
+validated repository count, fallback-derived count, confidence distribution, and
+elapsed runtime.
+
+## Quality guidance
+
+`sbom2repo` reports `purl2repo` evidence instead of hiding uncertain results.
+For investigation work, low-confidence fallback results can still be useful. For
+automation, prefer:
+
+```bash
+.venv/bin/python sbom2repo.py path/to/sbom.json \
+  --repo-only \
+  --min-confidence medium \
+  --require-validated \
+  --json --pretty
 ```
 
 ## Development
