@@ -8,11 +8,29 @@ and repository resolution is delegated to `purl2repo` 2.x.
 
 ## Install
 
+Install the released dependency set:
+
 ```bash
 python3 -m venv .venv
 .venv/bin/python -m pip install --upgrade pip
 .venv/bin/python -m pip install -r requirements.txt
 ```
+
+When developing against a local checkout of `purl2repo`, install it into this
+virtual environment in editable mode:
+
+```bash
+.venv/bin/python -m pip install -e ../purl2repo
+```
+
+Confirm the installed resolver supports the bulk settings used by `--fast`:
+
+```bash
+.venv/bin/python -c "import inspect; from purl2repo import Resolver; print(inspect.signature(Resolver))"
+```
+
+The output should include `validate_repositories`,
+`use_deps_dev_fallback`, and `use_scraper_fallback`.
 
 ## Usage
 
@@ -33,6 +51,11 @@ Fast first-party-only inventory:
 ```bash
 .venv/bin/python sbom2repo.py path/to/sbom.json --fast
 ```
+
+`--fast` is a convenience preset for large SBOM inventory runs. It resolves
+repositories only, skips repository URL validation, skips deps.dev, skips
+fallback scraping, and uses a default timeout of `3.0` seconds unless
+`--timeout` is supplied.
 
 Tune resolver fallbacks independently:
 
@@ -78,6 +101,14 @@ repository validation, deps.dev, or fallback scraping. In fast mode, the default
 timeout is `3.0` seconds instead of `10.0`. For finer control, use
 `--no-validate-repositories`, `--no-deps-dev-fallback`, and
 `--no-scraper-fallback` individually.
+
+The bulk resolver switches require a `purl2repo` version that supports them. If
+you see an error saying the installed `purl2repo` does not support the requested
+bulk resolver settings, install the local updated checkout with:
+
+```bash
+.venv/bin/python -m pip install -e ../purl2repo
+```
 
 ## Output
 
@@ -134,6 +165,7 @@ automation, prefer:
 ```bash
 python3 -m venv .venv
 .venv/bin/python -m pip install -r requirements.txt
+.venv/bin/python -m pip install -e ../purl2repo
 .venv/bin/python -m pip install pytest
 .venv/bin/python -m pytest
 ```
