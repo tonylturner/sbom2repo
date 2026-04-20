@@ -28,6 +28,21 @@ Fast repository-only inventory:
 .venv/bin/python sbom2repo.py path/to/sbom.json --repo-only
 ```
 
+Fast first-party-only inventory:
+
+```bash
+.venv/bin/python sbom2repo.py path/to/sbom.json --fast
+```
+
+Tune resolver fallbacks independently:
+
+```bash
+.venv/bin/python sbom2repo.py path/to/sbom.json \
+  --repo-only \
+  --no-deps-dev-fallback \
+  --no-scraper-fallback
+```
+
 Conservative automation output:
 
 ```bash
@@ -58,7 +73,11 @@ Verify inferred release links:
 Large Maven SBOMs can be slow because every component may require Maven POM
 fetches, parent POM fetches, repository URL validation, and fallback metadata
 checks for stale SCM URLs. Use `--repo-only` when release/tag URLs are not
-needed, and lower `--timeout` for quicker best-effort inventory runs.
+needed. Use `--fast` when you want quick first-party metadata results without
+repository validation, deps.dev, or fallback scraping. In fast mode, the default
+timeout is `3.0` seconds instead of `10.0`. For finer control, use
+`--no-validate-repositories`, `--no-deps-dev-fallback`, and
+`--no-scraper-fallback` individually.
 
 ## Output
 

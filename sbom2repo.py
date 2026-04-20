@@ -215,6 +215,35 @@ def build_parser() -> argparse.ArgumentParser:
         help="Resolve repositories only and skip release-link derivation",
     )
     parser.add_argument(
+        "--fast",
+        action="store_true",
+        help=(
+            "Fast inventory mode: repository-only, skip repository validation, "
+            "deps.dev fallback, and scraper fallback"
+        ),
+    )
+    parser.add_argument(
+        "--no-validate-repositories",
+        dest="validate_repositories",
+        action="store_false",
+        default=True,
+        help="Skip purl2repo repository URL validation checks",
+    )
+    parser.add_argument(
+        "--no-deps-dev-fallback",
+        dest="deps_dev_fallback",
+        action="store_false",
+        default=True,
+        help="Skip purl2repo deps.dev third-party fallback lookups",
+    )
+    parser.add_argument(
+        "--no-scraper-fallback",
+        dest="scraper_fallback",
+        action="store_false",
+        default=True,
+        help="Skip purl2repo bounded HTML fallback scraping",
+    )
+    parser.add_argument(
         "--min-confidence",
         choices=("none", "low", "medium", "high"),
         default="none",
@@ -230,9 +259,7 @@ def build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="Do not print the human-readable run summary",
     )
-    parser.add_argument(
-        "--timeout", type=float, default=10.0, help="HTTP timeout in seconds"
-    )
+    parser.add_argument("--timeout", type=float, help="HTTP timeout in seconds")
     parser.add_argument(
         "-v", "--verbose", action="store_true", help="Enable debug logging"
     )
@@ -242,17 +269,33 @@ def build_parser() -> argparse.ArgumentParser:
 def main() -> int:
     parser = build_parser()
     args = parser.parse_args()
+    validate_repositories = args.validate_repositories and not args.fast
+    use_deps_dev_fallback = args.deps_dev_fallback and not args.fast
+    use_scraper_fallback = args.scraper_fallback and not args.fast
+    if args.require_validated and (
+        args.fast or args.no_network or not validate_repositories
+    ):
+        parser.error(
+            "--require-validated requires repository validation; it cannot be "
+            "combined with --fast, --no-network, or --no-validate-repositories"
+        )
     configure_logging(args.verbose)
 
     sbom_data = load_cyclonedx_sbom(args.sbom_file_path)
+    timeout = args.timeout if args.timeout is not None else (3.0 if args.fast else 10.0)
     started = time.monotonic()
     with Resolver(
-        timeout=args.timeout,
+        timeout=timeout,
         strict=args.strict,
         no_network=args.no_network,
         verify_release_links=args.verify_release_links,
+        validate_repositories=validate_repositories,
+        use_deps_dev_fallback=use_deps_dev_fallback,
+        use_scraper_fallback=use_scraper_fallback,
     ) as resolver:
-        results = resolve_sbom(sbom_data, resolver, repo_only=args.repo_only)
+        results = resolve_sbom(
+            sbom_data, resolver, repo_only=args.repo_only or args.fast
+        )
     elapsed_seconds = time.monotonic() - started
     filtered_results = filter_results(
         results,

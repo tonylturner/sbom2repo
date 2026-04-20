@@ -5,7 +5,13 @@ import json
 from purl2repo.errors import InvalidPurlError
 from purl2repo.models import ParsedPurl, ReleaseLink, ResolutionResult
 
-from sbom2repo import filter_results, load_cyclonedx_sbom, resolve_sbom, results_to_json
+from sbom2repo import (
+    build_parser,
+    filter_results,
+    load_cyclonedx_sbom,
+    resolve_sbom,
+    results_to_json,
+)
 
 
 class FakeResolver:
@@ -124,6 +130,21 @@ def test_filter_results_keeps_errors_and_applies_quality_filters():
     filtered = filter_results(results, min_confidence="high", require_validated=True)
 
     assert [result.component_name for result in filtered] == ["PURL Spec", "Broken"]
+
+
+def test_parser_exposes_purl2repo_bulk_settings():
+    args = build_parser().parse_args(
+        [
+            "sbom.json",
+            "--no-validate-repositories",
+            "--no-deps-dev-fallback",
+            "--no-scraper-fallback",
+        ]
+    )
+
+    assert args.validate_repositories is False
+    assert args.deps_dev_fallback is False
+    assert args.scraper_fallback is False
 
 
 def test_results_to_json():
